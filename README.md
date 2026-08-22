@@ -20,7 +20,7 @@
 **GenAxis** is an open-source **AI-powered creative platform** built using the **PERN Stack (PostgreSQL, Express, React, Node.js)** and inspired by the sleek, minimal design of **Huly.io**.
 
 It empowers users to generate and explore AI content — from **images and text to design tools** — all inside a beautiful, responsive web app.
-
+later on we can add a basic chatbot if need
 ---
 
 ## 🧠 Features
