@@ -1,7 +1,5 @@
 import React from 'react';
-import { PricingTable } from '@clerk/clerk-react';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 
 const Plans = () => {
   return (
@@ -16,6 +14,7 @@ const Plans = () => {
         >
           OUR PLANS
         </motion.h2>
+
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -28,13 +27,14 @@ const Plans = () => {
       </div>
 
       <div className="mt-14 max-sm:mx-8">
-           <div className='mt-14 max-sm:mx-8'>
-        <PricingTable/>
-      </div>
+        <div className="mt-14 max-sm:mx-8">
+          <div className="text-center text-gray-400 py-12">
+            Plans and pricing will be available soon.
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default Plans;
-
