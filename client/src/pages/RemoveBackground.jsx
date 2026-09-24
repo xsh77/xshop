@@ -4,7 +4,6 @@ import axios from 'axios';
 import { useAuth, Protect } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 
-axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const RemoveBackground = () => {
   const [input, setInput] = useState(null);

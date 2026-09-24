@@ -1,369 +1,204 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Menu, X, User } from 'lucide-react';
-import { useClerk, UserButton, useUser } from '@clerk/clerk-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { createElement, useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Heart, LogOut, Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import useAuth from '../hooks/useAuth';
+
+const primaryLinks = [
+  { label: 'Shop', to: '/shop' },
+  { label: 'Categories', to: '/categories' },
+  { label: 'Deals', to: '/deals' },
+];
+
+const linkClass = ({ isActive }) =>
+  `rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 ${
+    isActive ? 'text-white bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/5'
+  }`;
 
 const Navbar = () => {
-  const navigate = useNavigate();
-  const { user } = useUser();
-  const { openSignIn } = useClerk();
-
+  const { status, user, profile, signOut } = useAuth();
+  const location = useLocation();
+  const reduceMotion = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showNavbar, setShowNavbar] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(window.scrollY);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(null);
-  const [hoveredDropdown, setHoveredDropdown] = useState(null);
-  const [dropdownTimeout, setDropdownTimeout] = useState(null);
+  const lastScrollY = useRef(typeof window === 'undefined' ? 0 : window.scrollY);
+  const isAuthenticated = status === 'authenticated';
+  const displayName = profile?.display_name
+    || user?.user_metadata?.display_name
+    || user?.user_metadata?.full_name
+    || user?.email
+    || 'Your account';
+  const avatarUrl = profile?.avatar_url
+    || user?.user_metadata?.avatar_url
+    || user?.user_metadata?.picture;
 
-  // Handle scroll and resize events
   useEffect(() => {
     const handleScroll = () => {
       const y = window.scrollY;
       setScrolled(y > 10);
-      setShowNavbar(!(y > lastScrollY && y > 100));
-      setLastScrollY(y);
+      setShowNavbar(!(y > lastScrollY.current && y > 100));
+      lastScrollY.current = y;
     };
 
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth >= 768) {
-        setMobileMenuOpen(false);
-        setMobileDropdownOpen(null);
-      }
-    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-    window.addEventListener('scroll', handleScroll);
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [lastScrollY]);
-
-  // Clear timeout on unmount
   useEffect(() => {
-    return () => {
-      if (dropdownTimeout) {
-        clearTimeout(dropdownTimeout);
-      }
-    };
-  }, [dropdownTimeout]);
+    setMobileMenuOpen(false);
+  }, [location.pathname, location.search]);
 
-  // Handle GitHub navigation
-  const handleGitHubClick = () => {
-    window.open('https://github.com/sahilmd01/GenAxis', '_blank', 'noopener,noreferrer');
-  };
+  useEffect(() => {
+    setShowNavbar(true);
+  }, [location.pathname]);
 
-  // Navigation items for right side
-  const rightNavItems = [
-    { 
-      label: 'Star us', 
-      path: 'https://github.com/Sahilmd01/GenAxis',
-      external: true,
-      icon: '/github.png'
-    },
-    { label: 'About', path: '/about', external: false },
-    { label: 'Contact us', path: '/contact', external: false },
+  const utilityLinks = [
+    { label: 'Search', to: '/search', icon: Search },
+    { label: 'Wishlist', to: '/account/wishlist', icon: Heart },
+    { label: 'Cart', to: '/cart', icon: ShoppingBag },
   ];
 
-  // Dropdown items for left side
-  const dropdownItems = {
-    product: [
-      { label: 'Features', path: '/product/feature' },
-      { label: 'Pricing', path: '/product/pricing' },
-      { label: 'Demo', path: '/product/demo' },
-    ],
-    resources: [
-      { label: 'Documentation', path: '/resources/documentation' },
-      { label: 'API Reference', path: '/resources/api' },
-      { 
-        label: 'Blog', 
-        path: 'https://blogni.vercel.app',
-        external: true 
-      },
-    ],
-    company: [
-      { label: 'About', path: '/about' },
-      { label: 'Contact', path: '/contact' },
-    ],
-    legal: [
-      { label: 'Privacy', path: '/legal/privacy' },
-      { label: 'Terms', path: '/legal/terms' },
-      { label: 'Security', path: '/legal/security' },
-    ]
-  };
-
-  // Handle navigation click
-  const handleNavClick = (item) => {
-    if (item.external) {
-      handleGitHubClick();
-    } else {
-      navigate(item.path);
-    }
-    if (isMobile) {
+  const handleSignOut = async () => {
+    try {
+      await signOut();
       setMobileMenuOpen(false);
+    } catch (error) {
+      toast.error(error.message || 'We could not sign you out. Please try again.');
     }
   };
 
-  // Handle dropdown item click
-  const handleDropdownItemClick = (item) => {
-    if (item.external) {
-      window.open(item.path, '_blank', 'noopener,noreferrer');
-    } else {
-      navigate(item.path);
-    }
-    if (isMobile) {
-      setMobileMenuOpen(false);
-    }
-  };
-
-  // Handle dropdown hover with proper timing
-  const handleDropdownEnter = (key) => {
-    if (dropdownTimeout) {
-      clearTimeout(dropdownTimeout);
-      setDropdownTimeout(null);
-    }
-    setHoveredDropdown(key);
-  };
-
-  const handleDropdownLeave = () => {
-    const timeout = setTimeout(() => {
-      setHoveredDropdown(null);
-    }, 300);
-    setDropdownTimeout(timeout);
-  };
-
-  const handleMobileDropdown = (key) => {
-    setMobileDropdownOpen(mobileDropdownOpen === key ? null : key);
-  };
+  const renderAccountAvatar = () => (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-purple-500/10 text-purple-200">
+      {avatarUrl
+        ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+        : <UserRound className="h-4 w-4" aria-hidden="true" />}
+    </span>
+  );
 
   return (
     <>
-      <motion.div
-        initial={{ y: -100 }}
-        animate={{ y: showNavbar ? 0 : -100 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={`fixed z-50 w-full ${
-          scrolled 
-            ? 'bg-black/40 border-b border-white/10' 
-            : 'bg-transparent'
-        } transition-all duration-300`}
+      <motion.header
+        initial={reduceMotion ? false : { y: -100 }}
+        animate={{ y: reduceMotion || showNavbar ? 0 : -100 }}
+        transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }}
+        className={`fixed inset-x-0 top-0 z-50 border-b transition-colors duration-300 ${
+          scrolled ? 'border-white/10 bg-black/70 backdrop-blur-2xl' : 'border-transparent bg-black/15 backdrop-blur-md'
+        }`}
       >
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          {/* Left Section - Logo & Dropdowns */}
-          <div className="flex items-center space-x-8">
-            {/* Logo with Name */}
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center cursor-pointer"
-              onClick={() => navigate('/')}
-            >
-              <div className="flex items-center space-x-2">
-                <img src="/logo.png" alt="Logo" className="h-6 w-6" />
-                <span className="text-white text-lg font-semibold">
-                  GenAxis
-                </span>
-              </div>
-            </motion.div>
+        <div className="mx-auto flex min-h-[68px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link to="/" aria-label="XSHOP home" className="group flex shrink-0 items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-purple-300/30 bg-gradient-to-br from-purple-500/30 to-blue-500/20 shadow-[0_0_24px_rgba(168,85,247,0.16)] transition-transform duration-300 group-hover:scale-105">
+              <ShoppingBag className="h-4 w-4 text-purple-100" aria-hidden="true" />
+            </span>
+            <span className="text-lg font-bold tracking-[0.16em] text-white">XSHOP</span>
+          </Link>
 
-            {/* Desktop Dropdowns */}
-            {!isMobile && (
-              <div className="flex items-center space-x-6">
-                {Object.entries(dropdownItems).map(([key, items]) => (
-                  <div 
-                    key={key} 
-                    className="relative"
-                    onMouseEnter={() => handleDropdownEnter(key)}
-                    onMouseLeave={handleDropdownLeave}
-                  >
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      className="flex items-center text-white/80 hover:text-white text-sm font-medium cursor-pointer transition-colors duration-200"
-                    >
-                      {key.charAt(0).toUpperCase() + key.slice(1)}
-                      <ChevronRight className={`w-3 h-3 ml-1 transition-transform duration-300 ${
-                        hoveredDropdown === key ? 'rotate-90' : ''
-                      }`} />
-                    </motion.button>
-                    
-                    {/* Dropdown Menu */}
-                    <div 
-                      className={`absolute top-full left-0 mt-2 w-48 backdrop-blur-2xl bg-black/40 border border-white/20 rounded-lg shadow-2xl p-2 z-50 ${
-                        hoveredDropdown === key ? 'block' : 'hidden'
-                      }`}
-                      onMouseEnter={() => handleDropdownEnter(key)}
-                      onMouseLeave={handleDropdownLeave}
-                    >
-                      {items.map((item) => (
-                        <button
-                          key={item.label}
-                          onClick={() => handleDropdownItemClick(item)}
-                          className="w-full text-left px-3 py-2 rounded text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200 text-sm cursor-pointer"
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
+            {primaryLinks.map((item) => (
+              <NavLink key={item.to} to={item.to} className={linkClass}>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
 
-          {/* Right Section - Navigation & Auth */}
-          <div className="flex items-center space-x-6">
-            {/* Desktop Navigation */}
-            {!isMobile && (
-              <>
-                {rightNavItems.map((item) => (
-                  <motion.button
-                    key={item.label}
-                    whileHover={{ scale: 1.05 }}
-                    onClick={() => handleNavClick(item)}
-                    className="flex items-center text-white/80 hover:text-white text-sm font-medium cursor-pointer transition-colors duration-200"
-                  >
-                    {item.icon && (
-                      <img 
-                        src={item.icon} 
-                        alt="GitHub" 
-                        className="w-4 h-4 mr-2 filter brightness-0 invert" 
-                      />
-                    )}
-                    {item.label}
-                  </motion.button>
-                ))}
-                
-                {user ? (
-                  <div className="cursor-pointer">
-                    <UserButton
-                      appearance={{
-                        elements: {
-                          userButtonAvatarBox: 'w-8 h-8 border border-white/30 cursor-pointer',
-                        },
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <motion.button
-                    onClick={openSignIn}
-                    className="flex items-center text-white/80 hover:text-white text-sm font-medium cursor-pointer transition-colors duration-200"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <User className="w-4 h-4 mr-2" />
-                    Sign In
-                  </motion.button>
-                )}
-              </>
-            )}
-
-            {/* Mobile Menu Button */}
-            {isMobile && (
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-white cursor-pointer p-1"
+          <div className="hidden items-center gap-1 md:flex">
+            {utilityLinks.map(({ label, to, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                aria-label={label}
+                title={label}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-white/70 transition-all duration-200 hover:border-white/10 hover:bg-white/5 hover:text-white"
               >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </motion.button>
+                {createElement(Icon, { className: 'h-[18px] w-[18px]', 'aria-hidden': true })}
+              </Link>
+            ))}
+            <span className="mx-2 h-6 w-px bg-white/10" aria-hidden="true" />
+            {status === 'loading' ? (
+              <span className="h-9 w-20 animate-pulse rounded-xl bg-white/5" aria-hidden="true" />
+            ) : isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <Link to="/account" aria-label={`Account: ${displayName}`} title={displayName} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1.5 text-sm font-medium text-white/90 transition hover:border-purple-300/30 hover:bg-white/[0.08]">
+                  {renderAccountAvatar()}
+                  <span className="hidden max-w-24 truncate lg:inline">Account</span>
+                </Link>
+                <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-white/70 transition hover:border-red-300/30 hover:bg-red-500/10 hover:text-white">
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="rounded-xl border border-purple-300/30 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:border-purple-300/60 hover:bg-purple-500/20 hover:shadow-[0_0_24px_rgba(168,85,247,0.18)]"
+              >
+                Sign in
+              </Link>
             )}
           </div>
-        </div>
-      </motion.div>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMobile && mobileMenuOpen && (
-          <motion.div
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed top-0 left-0 w-full z-40 backdrop-blur-2xl bg-black/60 border-b border-white/10 pt-16"
+          <button
+            type="button"
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="xshop-mobile-navigation"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white md:hidden"
           >
-            <div className="p-6 space-y-4">
-              {/* Right Side Items */}
-              <div className="space-y-3">
-                {rightNavItems.map((item) => (
-                  <button
-                    key={item.label}
-                    onClick={() => handleNavClick(item)}
-                    className="w-full flex items-center p-3 text-white/80 hover:text-white text-base font-medium cursor-pointer transition-colors duration-200"
-                  >
-                    {item.icon && (
-                      <img 
-                        src={item.icon} 
-                        alt="GitHub" 
-                        className="w-5 h-5 mr-3 filter brightness-0 invert" 
-                      />
-                    )}
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+            {mobileMenuOpen
+              ? <X className="h-5 w-5" aria-hidden="true" />
+              : <Menu className="h-5 w-5" aria-hidden="true" />}
+          </button>
+        </div>
+      </motion.header>
 
-              {/* Left Side Dropdowns */}
-              <div className="pt-4 border-t border-white/10 space-y-3">
-                {Object.entries(dropdownItems).map(([key, items]) => (
-                  <div key={key}>
-                    <button
-                      onClick={() => handleMobileDropdown(key)}
-                      className="w-full flex items-center justify-between p-3 text-white/80 hover:text-white text-base font-medium cursor-pointer transition-colors duration-200"
-                    >
-                      {key.charAt(0).toUpperCase() + key.slice(1)}
-                      <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${
-                        mobileDropdownOpen === key ? 'rotate-90' : ''
-                      }`} />
-                    </button>
-                    
-                    {mobileDropdownOpen === key && (
-                      <div className="pl-4 mt-2 space-y-2">
-                        {items.map((item) => (
-                          <button
-                            key={item.label}
-                            onClick={() => handleDropdownItemClick(item)}
-                            className="w-full text-left p-2 text-white/60 hover:text-white text-sm cursor-pointer transition-colors duration-200"
-                          >
-                            {item.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              {/* Auth Section */}
-              <div className="pt-4 border-t border-white/10">
-                {user ? (
-                  <div className="flex justify-center p-3 cursor-pointer">
-                    <UserButton
-                      appearance={{
-                        elements: {
-                          userButtonAvatarBox: 'w-10 h-10 border border-white/30 cursor-pointer',
-                        },
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      openSignIn();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full flex items-center justify-center p-3 text-white/80 hover:text-white text-base font-medium cursor-pointer transition-colors duration-200"
-                  >
-                    <User className="w-4 h-4 mr-2" />
-                    Sign In
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.nav
+            id="xshop-mobile-navigation"
+            aria-label="Mobile navigation"
+            initial={reduceMotion ? false : { opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
+            transition={{ duration: reduceMotion ? 0 : 0.18 }}
+            className="fixed inset-x-0 top-[68px] z-40 border-b border-white/10 bg-black/95 px-4 pb-5 pt-3 shadow-2xl shadow-black/40 backdrop-blur-2xl md:hidden"
+          >
+            <div className="mx-auto max-w-7xl space-y-1">
+              {primaryLinks.map((item) => (
+                <NavLink key={item.to} to={item.to} className={(state) => `${linkClass(state)} block w-full`}>
+                  {item.label}
+                </NavLink>
+              ))}
+              <div className="my-3 border-t border-white/10" />
+              {utilityLinks.map(({ label, to, icon: Icon }) => (
+                <NavLink key={to} to={to} className={(state) => `${linkClass(state)} block w-full`}>
+                  <span className="flex items-center gap-3">
+                    {createElement(Icon, { className: 'h-4 w-4 text-purple-300', 'aria-hidden': true })}
+                    {label}
+                  </span>
+                </NavLink>
+              ))}
+              <div className="my-3 border-t border-white/10" />
+              {status === 'loading' ? (
+                <div className="h-11 animate-pulse rounded-xl bg-white/5" aria-hidden="true" />
+              ) : isAuthenticated ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                  <Link to="/account" className="flex min-w-0 items-center gap-3 text-sm text-white/90">
+                    {renderAccountAvatar()}
+                    <span className="truncate">{displayName}</span>
+                  </Link>
+                  <button type="button" onClick={handleSignOut} className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/80 transition hover:border-red-300/30 hover:bg-red-500/10 hover:text-white">
+                    <LogOut className="h-3.5 w-3.5" aria-hidden="true" /> Sign out
                   </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <Link to="/login" className="block rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 text-center text-sm font-semibold text-white">
+                  Sign in
+                </Link>
+              )}
             </div>
-          </motion.div>
+          </motion.nav>
         )}
       </AnimatePresence>
     </>

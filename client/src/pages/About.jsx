@@ -1,14 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { useUser } from "@clerk/clerk-react";
 import { ChevronRight, Users, Target, Zap, Globe } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 const About = () => {
-  const navigate = useNavigate();
-  const { user } = useUser();
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
